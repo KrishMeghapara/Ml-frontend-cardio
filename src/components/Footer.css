@@ -1,0 +1,111 @@
+/* ========================================
+   FOOTER COMPONENT - Fixed UI Issues
+======================================== */
+.footer {
+  background: rgba(15, 23, 42, 0.6);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-top: 1px solid var(--border-color);
+  margin-top: auto;
+  animation: fadeInUp 0.5s ease-out;
+  transition: background var(--transition-base);
+}
+
+[data-theme="light"] .footer {
+  background: rgba(255, 255, 255, 0.8);
+}
+
+.footer-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: var(--space-xl) var(--space-lg);
+}
+
+.footer-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-md);
+}
+
+/* Main footer text */
+.footer-main {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-sm);
+  color: var(--text-secondary);
+  flex-wrap: wrap;
+  justify-content: center;
+}
+
+.footer-separator {
+  color: var(--text-muted);
+}
+
+.heart-icon {
+  color: var(--accent-500);
+  animation: heartbeat 2s ease-in-out infinite;
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .heart-icon {
+    animation: none;
+  }
+}
+
+.footer-brand {
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary-400) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  font-weight: 600;
+}
+
+[data-theme="light"] .footer-brand {
+  background: linear-gradient(135deg, var(--primary-600) 0%, var(--primary-800) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+/* Disclaimer with SVG icon */
+.footer-disclaimer {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  font-style: italic;
+  text-align: center;
+  max-width: 600px;
+  line-height: 1.5;
+}
+
+.lock-icon {
+  flex-shrink: 0;
+  color: var(--text-muted);
+  width: 14px;
+  height: 14px;
+}
+
+/* ========================================
+   RESPONSIVE STYLES
+======================================== */
+@media (max-width: 768px) {
+  .footer-container {
+    padding: var(--space-lg) var(--space-md);
+  }
+
+  .footer-main {
+    font-size: var(--font-size-xs);
+    text-align: center;
+  }
+
+  .footer-disclaimer {
+    flex-direction: column;
+    gap: var(--space-xs);
+  }
+}

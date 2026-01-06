@@ -1,0 +1,883 @@
+/* ========================================
+   RESULT DISPLAY CONTAINER
+======================================== */
+.result-display {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border-radius: var(--radius-2xl);
+  padding: var(--space-2xl);
+  box-shadow: var(--glass-shadow);
+  max-width: 800px;
+  margin: 0 auto;
+  animation: scaleIn 0.5s ease-out;
+  position: relative;
+  overflow: hidden;
+}
+
+/* Decorative glow based on risk level */
+.result-display::before {
+  content: '';
+  position: absolute;
+  top: -150px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 400px;
+  height: 400px;
+  border-radius: 50%;
+  pointer-events: none;
+  opacity: 0.15;
+  transition: background var(--transition-slow);
+}
+
+.result-display.risk-low::before {
+  background: radial-gradient(circle, var(--success-500) 0%, transparent 70%);
+}
+
+.result-display.risk-medium::before {
+  background: radial-gradient(circle, var(--warning-500) 0%, transparent 70%);
+}
+
+.result-display.risk-high::before {
+  background: radial-gradient(circle, var(--danger-500) 0%, transparent 70%);
+}
+
+/* ========================================
+   RESULT HEADER
+======================================== */
+.result-header {
+  text-align: center;
+  margin-bottom: var(--space-xl);
+  position: relative;
+  z-index: 1;
+}
+
+.result-header h2 {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  margin: 0;
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary-400) 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  letter-spacing: -0.02em;
+}
+
+[data-theme="light"] .result-header h2 {
+  background: linear-gradient(135deg, var(--text-primary) 0%, var(--primary-600) 100%);
+  -webkit-background-clip: text;
+  background-clip: text;
+}
+
+.result-header h2:focus {
+  outline: none;
+}
+
+.result-subtitle {
+  color: var(--text-muted);
+  font-size: var(--font-size-base);
+  margin-top: var(--space-xs);
+}
+
+/* ========================================
+   RESULT CONTENT
+======================================== */
+.result-content {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xl);
+  position: relative;
+  z-index: 1;
+}
+
+/* ========================================
+   RISK SCORE VISUALIZATION
+======================================== */
+.risk-visualization {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-lg);
+  padding: var(--space-xl) 0;
+}
+
+/* Animated Ring */
+.risk-ring-container {
+  position: relative;
+  width: 220px;
+  height: 220px;
+}
+
+.risk-ring-svg {
+  width: 100%;
+  height: 100%;
+  transform: rotate(-90deg);
+}
+
+.risk-ring-bg {
+  fill: none;
+  stroke: var(--border-color);
+  stroke-width: 12;
+}
+
+.risk-ring-progress {
+  fill: none;
+  stroke-width: 12;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 1.5s cubic-bezier(0.4, 0, 0.2, 1),
+    stroke 0.5s ease;
+}
+
+/* Issue #15: Remove filter for better performance, use box-shadow on container */
+.risk-ring-progress.low {
+  stroke: url(#gradientSuccess);
+}
+
+.risk-ring-progress.medium {
+  stroke: url(#gradientWarning);
+}
+
+.risk-ring-progress.high {
+  stroke: url(#gradientDanger);
+}
+
+/* Glow effect on container instead of filter */
+.risk-ring-container.low {
+  filter: drop-shadow(0 0 15px rgba(16, 185, 129, 0.3));
+}
+
+.risk-ring-container.medium {
+  filter: drop-shadow(0 0 15px rgba(245, 158, 11, 0.3));
+}
+
+.risk-ring-container.high {
+  filter: drop-shadow(0 0 15px rgba(239, 68, 68, 0.3));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .risk-ring-container {
+    filter: none;
+  }
+}
+
+.risk-ring-center {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.risk-percentage {
+  font-size: var(--font-size-5xl);
+  font-weight: 800;
+  color: var(--text-primary);
+  line-height: 1;
+  display: flex;
+  align-items: baseline;
+}
+
+.risk-percentage-symbol {
+  font-size: var(--font-size-2xl);
+  font-weight: 600;
+  opacity: 0.7;
+  margin-left: 2px;
+}
+
+.risk-label {
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  margin-top: var(--space-xs);
+}
+
+/* ========================================
+   RISK LEVEL BADGE
+======================================== */
+.risk-level-section {
+  display: flex;
+  justify-content: center;
+}
+
+.risk-badge {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  padding: var(--space-md) var(--space-xl);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  animation: fadeInUp 0.5s ease-out 0.3s backwards;
+}
+
+.risk-badge.low {
+  background: rgba(16, 185, 129, 0.15);
+  color: var(--success-400);
+  border: 2px solid rgba(16, 185, 129, 0.3);
+  box-shadow: 0 0 30px rgba(16, 185, 129, 0.2);
+}
+
+.risk-badge.medium {
+  background: rgba(245, 158, 11, 0.15);
+  color: var(--warning-400);
+  border: 2px solid rgba(245, 158, 11, 0.3);
+  box-shadow: 0 0 30px rgba(245, 158, 11, 0.2);
+}
+
+.risk-badge.high {
+  background: rgba(239, 68, 68, 0.15);
+  color: var(--danger-400);
+  border: 2px solid rgba(239, 68, 68, 0.3);
+  box-shadow: 0 0 30px rgba(239, 68, 68, 0.2);
+}
+
+[data-theme="light"] .risk-badge.low {
+  color: var(--success-600);
+}
+
+[data-theme="light"] .risk-badge.medium {
+  color: var(--warning-600);
+}
+
+[data-theme="light"] .risk-badge.high {
+  color: var(--danger-600);
+}
+
+.risk-icon {
+  display: flex;
+  align-items: center;
+}
+
+.risk-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* ========================================
+   COMPARISON SECTION
+======================================== */
+.comparison-section {
+  text-align: center;
+  padding: var(--space-md);
+  border-radius: var(--radius-lg);
+  animation: fadeInUp 0.5s ease-out 0.4s backwards;
+}
+
+.comparison-section.better {
+  background: rgba(16, 185, 129, 0.1);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+}
+
+.comparison-section.average {
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.2);
+}
+
+.comparison-section.worse {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.2);
+}
+
+.comparison-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-weight: 600;
+  font-size: var(--font-size-base);
+  margin-bottom: var(--space-sm);
+}
+
+.comparison-section.better .comparison-badge {
+  color: var(--success-400);
+}
+
+.comparison-section.average .comparison-badge {
+  color: var(--warning-400);
+}
+
+.comparison-section.worse .comparison-badge {
+  color: var(--danger-400);
+}
+
+[data-theme="light"] .comparison-section.better .comparison-badge {
+  color: var(--success-600);
+}
+
+[data-theme="light"] .comparison-section.average .comparison-badge {
+  color: var(--warning-600);
+}
+
+[data-theme="light"] .comparison-section.worse .comparison-badge {
+  color: var(--danger-600);
+}
+
+.comparison-description {
+  color: var(--text-secondary);
+  font-size: var(--font-size-sm);
+  margin: 0;
+}
+
+.comparison-note {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  margin-top: var(--space-sm);
+}
+
+/* ========================================
+   RISK FACTORS SECTION
+======================================== */
+.risk-factors-section {
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: var(--radius-xl);
+  overflow: hidden;
+  animation: fadeInUp 0.5s ease-out 0.45s backwards;
+}
+
+.section-toggle {
+  width: 100%;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: var(--space-lg);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  transition: background var(--transition-base);
+}
+
+.section-toggle:hover {
+  background: rgba(99, 102, 241, 0.05);
+}
+
+.section-toggle:focus-visible {
+  outline: 2px solid var(--primary-500);
+  outline-offset: -2px;
+}
+
+.toggle-icon {
+  color: var(--text-muted);
+  transition: transform var(--transition-base);
+}
+
+.toggle-icon.open {
+  transform: rotate(180deg);
+}
+
+/* Issue #16: Visual indicator that section is expandable */
+.section-toggle-hint {
+  font-size: var(--font-size-xs);
+  color: var(--text-muted);
+  margin-left: auto;
+  margin-right: var(--space-sm);
+}
+
+.risk-factors-content {
+  padding: 0 var(--space-lg) var(--space-lg);
+}
+
+.factors-intro {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  margin-bottom: var(--space-lg);
+}
+
+.risk-factors-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-md);
+}
+
+.risk-factor-item {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-lg);
+  padding: var(--space-md);
+  transition: all var(--transition-base);
+}
+
+[data-theme="light"] .risk-factor-item {
+  background: rgba(0, 0, 0, 0.03);
+}
+
+.risk-factor-item:hover {
+  background: rgba(255, 255, 255, 0.08);
+}
+
+[data-theme="light"] .risk-factor-item:hover {
+  background: rgba(0, 0, 0, 0.05);
+}
+
+.factor-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-sm);
+}
+
+.factor-icon {
+  width: 32px;
+  height: 32px;
+  border-radius: var(--radius-md);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(99, 102, 241, 0.2);
+  color: var(--primary-400);
+  flex-shrink: 0;
+}
+
+.risk-factor-item.low .factor-icon {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--success-400);
+}
+
+.risk-factor-item.medium .factor-icon {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--warning-400);
+}
+
+.risk-factor-item.high .factor-icon {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--danger-400);
+}
+
+.factor-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.factor-name {
+  font-weight: 600;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.factor-value {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+}
+
+.factor-status {
+  padding: var(--space-xs) var(--space-sm);
+  border-radius: var(--radius-full);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.factor-status.low {
+  background: rgba(16, 185, 129, 0.2);
+  color: var(--success-400);
+}
+
+.factor-status.medium {
+  background: rgba(245, 158, 11, 0.2);
+  color: var(--warning-400);
+}
+
+.factor-status.high {
+  background: rgba(239, 68, 68, 0.2);
+  color: var(--danger-400);
+}
+
+[data-theme="light"] .factor-status.low {
+  color: var(--success-600);
+}
+
+[data-theme="light"] .factor-status.medium {
+  color: var(--warning-600);
+}
+
+[data-theme="light"] .factor-status.high {
+  color: var(--danger-600);
+}
+
+.factor-bar-container {
+  height: 4px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: var(--radius-full);
+  margin-bottom: var(--space-sm);
+  overflow: hidden;
+}
+
+[data-theme="light"] .factor-bar-container {
+  background: rgba(0, 0, 0, 0.1);
+}
+
+.factor-bar {
+  height: 100%;
+  border-radius: var(--radius-full);
+  transition: width 1s ease-out;
+}
+
+.factor-bar.low {
+  background: var(--gradient-success);
+}
+
+.factor-bar.medium {
+  background: var(--gradient-warning);
+}
+
+.factor-bar.high {
+  background: var(--gradient-danger);
+}
+
+.factor-recommendation {
+  color: var(--text-muted);
+  font-size: var(--font-size-xs);
+  line-height: 1.5;
+  margin: 0;
+}
+
+/* ========================================
+   INTERPRETATION SECTION
+======================================== */
+.interpretation-section {
+  background: rgba(99, 102, 241, 0.08);
+  border: 1px solid rgba(99, 102, 241, 0.2);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  animation: fadeInUp 0.5s ease-out 0.5s backwards;
+}
+
+.section-header-inline {
+  display: flex;
+  align-items: center;
+  gap: var(--space-md);
+  margin-bottom: var(--space-md);
+}
+
+.section-emoji {
+  display: flex;
+  align-items: center;
+  color: var(--primary-400);
+}
+
+.section-emoji svg {
+  width: 20px;
+  height: 20px;
+}
+
+.interpretation-section h3,
+.recommendations-section h3 {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.interpretation-text {
+  color: var(--text-secondary);
+  line-height: 1.8;
+  font-size: var(--font-size-base);
+  margin: 0;
+}
+
+/* ========================================
+   RECOMMENDATIONS SECTION
+======================================== */
+.recommendations-section {
+  background: rgba(16, 185, 129, 0.08);
+  border: 1px solid rgba(16, 185, 129, 0.2);
+  border-radius: var(--radius-xl);
+  padding: var(--space-xl);
+  animation: fadeInUp 0.5s ease-out 0.55s backwards;
+}
+
+.recommendations-section .section-emoji {
+  color: var(--success-400);
+}
+
+.recommendations-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  margin-top: var(--space-md);
+}
+
+.recommendations-list li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-md);
+  padding: var(--space-md) 0;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  color: var(--text-secondary);
+  line-height: 1.6;
+  animation: slideInLeft 0.4s ease-out backwards;
+}
+
+[data-theme="light"] .recommendations-list li {
+  border-bottom-color: rgba(0, 0, 0, 0.05);
+}
+
+.recommendations-list li:nth-child(1) {
+  animation-delay: 0.6s;
+}
+
+.recommendations-list li:nth-child(2) {
+  animation-delay: 0.7s;
+}
+
+.recommendations-list li:nth-child(3) {
+  animation-delay: 0.8s;
+}
+
+.recommendations-list li:nth-child(4) {
+  animation-delay: 0.9s;
+}
+
+.recommendations-list li:nth-child(5) {
+  animation-delay: 1s;
+}
+
+.recommendations-list li:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
+}
+
+.recommendation-icon {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  border-radius: var(--radius-md);
+  background: rgba(16, 185, 129, 0.2);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--success-400);
+}
+
+.recommendation-icon svg {
+  width: 14px;
+  height: 14px;
+}
+
+/* ========================================
+   DISCLAIMER SECTION
+======================================== */
+.disclaimer-section {
+  animation: fadeInUp 0.5s ease-out 0.6s backwards;
+}
+
+.disclaimer-box {
+  background: rgba(251, 191, 36, 0.1);
+  border: 1px solid rgba(251, 191, 36, 0.2);
+  border-radius: var(--radius-xl);
+  padding: var(--space-lg);
+  display: flex;
+  gap: var(--space-md);
+}
+
+.disclaimer-icon {
+  flex-shrink: 0;
+  color: var(--warning-400);
+}
+
+.disclaimer-icon svg {
+  width: 24px;
+  height: 24px;
+}
+
+.disclaimer-content h4 {
+  font-size: var(--font-size-base);
+  font-weight: 600;
+  color: var(--warning-400);
+  margin: 0 0 var(--space-sm) 0;
+}
+
+[data-theme="light"] .disclaimer-content h4 {
+  color: var(--warning-600);
+}
+
+.disclaimer-content p {
+  color: var(--text-muted);
+  font-size: var(--font-size-sm);
+  line-height: 1.7;
+  margin: 0;
+}
+
+/* ========================================
+   RESULT ACTIONS
+======================================== */
+.result-actions {
+  display: flex;
+  gap: var(--space-md);
+  justify-content: center;
+  flex-wrap: wrap;
+  padding-top: var(--space-xl);
+  border-top: 1px solid var(--border-color);
+  animation: fadeInUp 0.5s ease-out 0.7s backwards;
+}
+
+.result-actions .btn {
+  min-width: 160px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+}
+
+.result-actions .btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* ========================================
+   RESPONSIVE STYLES
+======================================== */
+@media (max-width: 768px) {
+  .result-display {
+    padding: var(--space-xl);
+  }
+
+  .result-header h2 {
+    font-size: var(--font-size-xl);
+  }
+
+  .risk-ring-container {
+    width: 180px;
+    height: 180px;
+  }
+
+  .risk-percentage {
+    font-size: var(--font-size-4xl);
+  }
+
+  .risk-badge {
+    padding: var(--space-sm) var(--space-lg);
+    font-size: var(--font-size-base);
+  }
+
+  .interpretation-section,
+  .recommendations-section,
+  .disclaimer-box,
+  .risk-factors-content {
+    padding: var(--space-lg);
+  }
+
+  .result-actions {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .result-actions .btn {
+    width: 100%;
+    max-width: 280px;
+  }
+
+  .factor-header {
+    flex-wrap: wrap;
+  }
+
+  .factor-status {
+    margin-top: var(--space-xs);
+  }
+}
+
+@media (max-width: 480px) {
+  .result-display {
+    padding: var(--space-lg);
+    border-radius: var(--radius-xl);
+  }
+
+  .risk-ring-container {
+    width: 150px;
+    height: 150px;
+  }
+
+  .risk-percentage {
+    font-size: var(--font-size-3xl);
+  }
+
+  .risk-percentage-symbol {
+    font-size: var(--font-size-lg);
+  }
+
+  .risk-badge {
+    font-size: var(--font-size-sm);
+    padding: var(--space-sm) var(--space-md);
+  }
+
+  .section-header-inline {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .disclaimer-box {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .recommendations-list li {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+}
+
+/* ========================================
+   PRINT STYLES
+======================================== */
+@media print {
+  .result-display {
+    background: white !important;
+    box-shadow: none !important;
+    border: 1px solid #e5e5e5 !important;
+    -webkit-backdrop-filter: none !important;
+    backdrop-filter: none !important;
+  }
+
+  .result-display::before {
+    display: none;
+  }
+
+  .result-header h2 {
+    background: none !important;
+    -webkit-text-fill-color: #333 !important;
+    color: #333 !important;
+  }
+
+  .risk-percentage {
+    color: #333 !important;
+  }
+
+  .interpretation-text,
+  .recommendations-list li,
+  .disclaimer-content p {
+    color: #666 !important;
+  }
+
+  .interpretation-section h3,
+  .recommendations-section h3,
+  .disclaimer-content h4 {
+    color: #333 !important;
+  }
+
+  .result-actions {
+    display: none !important;
+  }
+
+  .section-toggle {
+    display: none !important;
+  }
+
+  .risk-factors-content {
+    display: block !important;
+  }
+
+  .risk-ring-progress {
+    filter: none !important;
+  }
+}
