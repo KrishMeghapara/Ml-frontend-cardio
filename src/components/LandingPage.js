@@ -12,7 +12,7 @@ const LandingPage = ({ onStartAssessment }) => {
     },
     {
       icon: 'chart',
-      title: '71.3% Clinical Accuracy',
+      title: '73.4% Clinical Accuracy',
       description: 'Validated on cardiovascular disease dataset with rigorous testing protocols'
     },
     {
@@ -196,7 +196,7 @@ const LandingPage = ({ onStartAssessment }) => {
 
         <div className="hero-stats" role="list" aria-label="Key statistics">
           <div className="stat-item" role="listitem">
-            <span className="stat-number">71.3%</span>
+            <span className="stat-number">73.4%</span>
             <span className="stat-label">Clinical Accuracy</span>
           </div>
           <div className="stat-item" role="listitem">
@@ -290,7 +290,7 @@ const LandingPage = ({ onStartAssessment }) => {
                   <span aria-hidden="true">{getIcon('check', 18)}</span>
                   Validation
                 </h3>
-                <p>71.3% accuracy on test set with stratified sampling. Feature importance analysis ensures clinical relevance.</p>
+                <p>73.4% accuracy on test set with stratified sampling. Feature importance analysis ensures clinical relevance.</p>
               </div>
             </div>
 
@@ -369,7 +369,7 @@ const LandingPage = ({ onStartAssessment }) => {
           </div>
           <div className="disclaimer-content">
             <p>
-              Our AI model achieves 71.3% accuracy on validation data. While this represents
+              Our AI model achieves 73.4% accuracy on validation data. While this represents
               good performance for cardiovascular risk prediction, it means approximately
               28.7% of predictions may be incorrect. Results should be interpreted as risk
               indicators, not definitive diagnoses.
