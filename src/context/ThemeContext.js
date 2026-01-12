@@ -17,11 +17,11 @@ export const ThemeProvider = ({ children }) => {
         if (savedTheme) {
             return savedTheme;
         }
-        // Check system preference
-        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches) {
-            return 'light';
+        // Check system preference, default to light if no preference
+        if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+            return 'dark';
         }
-        return 'dark';
+        return 'light';
     });
 
     useEffect(() => {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import axios from 'axios';
 import { kgToLbs, lbsToKg, cmToFeetInches, feetInchesToCm } from '../utils/unitConversion';
@@ -12,6 +12,9 @@ const HealthForm = ({ onPrediction, onError, onLoading, loading, onBack, initial
   const [apiError, setApiError] = useState(null);
   const [currentStep, setCurrentStep] = useState(1);
   const [useMetric, setUseMetric] = useState(true);
+  // eslint-disable-next-line no-unused-vars
+  const [isVisible, setIsVisible] = useState({});
+  const formRef = useRef(null);
   const totalSteps = 3;
 
   // Initialize form with initial data if editing
@@ -23,10 +26,29 @@ const HealthForm = ({ onPrediction, onError, onLoading, loading, onBack, initial
     }
   }, [initialData, setValue]);
 
+  // Intersection observer for animations
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            setIsVisible((prev) => ({ ...prev, [entry.target.id]: true }));
+          }
+        });
+      },
+      { threshold: 0.1 }
+    );
+
+    const sections = document.querySelectorAll('.animate-section');
+    sections.forEach((section) => observer.observe(section));
+
+    return () => observer.disconnect();
+  }, [currentStep]);
+
   const steps = [
-    { id: 1, label: 'Personal', icon: 'user' },
-    { id: 2, label: 'Medical', icon: 'heart' },
-    { id: 3, label: 'Lifestyle', icon: 'activity' }
+    { id: 1, label: 'Personal', icon: 'user', description: 'Basic information' },
+    { id: 2, label: 'Medical', icon: 'heart', description: 'Health vitals' },
+    { id: 3, label: 'Lifestyle', icon: 'activity', description: 'Daily habits' }
   ];
 
   const stepFields = {
@@ -35,8 +57,10 @@ const HealthForm = ({ onPrediction, onError, onLoading, loading, onBack, initial
     3: ['smoke', 'alco', 'active']
   };
 
-  // Watch height and weight for unit conversion
+  // Watch height and weight for unit conversion (used for reactive updates)
+  // eslint-disable-next-line no-unused-vars
   const watchHeight = watch('height');
+  // eslint-disable-next-line no-unused-vars
   const watchWeight = watch('weight');
 
   const toggleUnits = () => {
@@ -114,9 +138,11 @@ const HealthForm = ({ onPrediction, onError, onLoading, loading, onBack, initial
         onError(errorMsg);
       }
     } catch (error) {
-      let errorMessage = 'Unable to connect to the prediction service. ';
+      let errorMessage = '';
+      let isServerWakingUp = false;
 
       if (error.response) {
+        // Server responded with an error
         const serverError = error.response.data?.error;
         if (serverError?.details && Array.isArray(serverError.details)) {
           errorMessage = serverError.details.join(', ');
@@ -124,12 +150,18 @@ const HealthForm = ({ onPrediction, onError, onLoading, loading, onBack, initial
           errorMessage = serverError?.message || `Server error: ${error.response.status}`;
         }
       } else if (error.request) {
-        errorMessage += 'Please check your internet connection and try again.';
+        // No response received - likely server is sleeping (Render free tier)
+        isServerWakingUp = true;
+        errorMessage = `⏳ Server is waking up!\n\nOur backend is hosted on Render's free tier, which puts the server to sleep after periods of inactivity.\n\n🔄 What to do:\n• Please wait 30-60 seconds and try again\n• The first request wakes up the server\n• Subsequent requests will be much faster\n\nThank you for your patience!`;
+      } else if (error.code === 'ECONNABORTED') {
+        // Timeout error
+        isServerWakingUp = true;
+        errorMessage = `⏳ Request timed out - Server is starting up!\n\nOur backend is hosted on Render's free tier and may take a moment to start.\n\n🔄 Please try again in 30-60 seconds.\n\nThe server needs to wake up from sleep mode. Thank you for your patience!`;
       } else {
-        errorMessage += error.message;
+        errorMessage = `Connection error: ${error.message}`;
       }
 
-      setApiError(errorMessage);
+      setApiError({ message: errorMessage, isServerWakingUp });
       onError(errorMessage);
     } finally {
       onLoading(false);
@@ -209,61 +241,152 @@ const HealthForm = ({ onPrediction, onError, onLoading, loading, onBack, initial
     return icons[iconName] || null;
   };
 
+  const getIcon = (name, size = 20) => {
+    const icons = {
+      back: (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="15 18 9 12 15 6" />
+        </svg>
+      ),
+      forward: (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="9 18 15 12 9 6" />
+        </svg>
+      ),
+      search: (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="11" cy="11" r="8" />
+          <path d="M21 21l-4.35-4.35" />
+        </svg>
+      ),
+      info: (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="16" x2="12" y2="12" />
+          <line x1="12" y1="8" x2="12.01" y2="8" />
+        </svg>
+      ),
+      alert: (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="8" x2="12" y2="12" />
+          <line x1="12" y1="16" x2="12.01" y2="16" />
+        </svg>
+      ),
+      check: (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+          <polyline points="20 6 9 17 4 12" />
+        </svg>
+      ),
+      heartPulse: (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <path d="M22 12h-4l-3 9L9 3l-3 9H2" />
+        </svg>
+      ),
+      refresh: (
+        <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+          <polyline points="23 4 23 10 17 10" />
+          <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+        </svg>
+      )
+    };
+    return icons[name] || null;
+  };
+
+  // ECG Line Component for form header
+  const ECGLine = () => (
+    <div className="form-ecg-container" aria-hidden="true">
+      <svg className="form-ecg-line" viewBox="0 0 400 60" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="formEcgGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="var(--primary-500)" stopOpacity="0" />
+            <stop offset="50%" stopColor="var(--primary-400)" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="var(--primary-500)" stopOpacity="0" />
+          </linearGradient>
+        </defs>
+        <path
+          className="form-ecg-path"
+          d="M0,30 L80,30 L100,30 L110,10 L120,50 L130,20 L140,40 L150,30 L200,30 L220,30 L230,8 L240,52 L250,30 L280,30 L300,30 L320,30 L330,12 L340,48 L350,22 L360,38 L370,30 L400,30"
+          fill="none"
+          stroke="url(#formEcgGradient)"
+          strokeWidth="2"
+        />
+      </svg>
+    </div>
+  );
+
   return (
-    <div className="health-form-container">
+    <div className="health-form-container-v2" ref={formRef}>
+      {/* Background decorations */}
+      <div className="form-bg-decoration" aria-hidden="true">
+        <div className="form-orb form-orb-1"></div>
+        <div className="form-orb form-orb-2"></div>
+      </div>
+
       <form
         onSubmit={handleSubmit(onSubmit)}
-        className="health-form"
+        className="health-form-v2"
         aria-label="Health assessment form"
         noValidate
       >
         {/* Form Header */}
-        <div className="form-header">
+        <div className="form-header-v2">
           <button
             type="button"
             onClick={onBack}
-            className="btn btn-secondary btn-back"
+            className="btn-back-v2"
             disabled={loading}
             aria-label="Go back to home page"
           >
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <polyline points="15 18 9 12 15 6" />
-            </svg>
-            Back to Home
+            {getIcon('back', 18)}
+            <span>Back</span>
           </button>
-          <h2 id="form-title">Health Assessment Form</h2>
-          <p className="form-subtitle">Please provide accurate information for the most reliable risk assessment</p>
+
+          <div className="form-title-section">
+            <div className="form-badge">
+              <span className="badge-dot"></span>
+              <span>Step {currentStep} of {totalSteps}</span>
+            </div>
+            <h2 id="form-title">Health Assessment</h2>
+            <p className="form-subtitle">Provide accurate information for reliable risk assessment</p>
+          </div>
+
+          <ECGLine />
         </div>
 
         {/* Unit Toggle */}
-        <div className="unit-toggle-container">
-          <span className="unit-label">Units:</span>
-          <div className="unit-toggle-group" role="group" aria-label="Unit system selection">
-            <button
-              type="button"
-              className={`unit-toggle-btn ${useMetric ? 'active' : ''}`}
-              onClick={() => useMetric || toggleUnits()}
-              aria-pressed={useMetric}
-            >
-              Metric (cm, kg)
-            </button>
-            <button
-              type="button"
-              className={`unit-toggle-btn ${!useMetric ? 'active' : ''}`}
-              onClick={() => !useMetric || toggleUnits()}
-              aria-pressed={!useMetric}
-            >
-              Imperial (ft, lbs)
-            </button>
+        <div className="unit-toggle-container-v2">
+          <div className="unit-toggle-wrapper">
+            <span className="unit-label">Measurement System</span>
+            <div className="unit-toggle-group-v2" role="group" aria-label="Unit system selection">
+              <button
+                type="button"
+                className={`unit-toggle-btn-v2 ${useMetric ? 'active' : ''}`}
+                onClick={() => useMetric || toggleUnits()}
+                aria-pressed={useMetric}
+              >
+                <span className="toggle-icon">📏</span>
+                Metric
+              </button>
+              <button
+                type="button"
+                className={`unit-toggle-btn-v2 ${!useMetric ? 'active' : ''}`}
+                onClick={() => !useMetric || toggleUnits()}
+                aria-pressed={!useMetric}
+              >
+                <span className="toggle-icon">📐</span>
+                Imperial
+              </button>
+            </div>
           </div>
         </div>
 
         {/* Progress Indicator */}
-        <div className="progress-container" role="navigation" aria-label="Form progress">
-          <div className="progress-steps">
-            <div className="progress-line" aria-hidden="true">
+        <div className="progress-container-v2" role="navigation" aria-label="Form progress">
+          <div className="progress-steps-v2">
+            <div className="progress-line-v2" aria-hidden="true">
               <div
-                className="progress-line-fill"
+                className="progress-line-fill-v2"
                 style={{ width: `${getProgressWidth()}%` }}
               ></div>
             </div>
@@ -271,58 +394,63 @@ const HealthForm = ({ onPrediction, onError, onLoading, loading, onBack, initial
               <button
                 type="button"
                 key={step.id}
-                className={`progress-step ${currentStep === step.id ? 'active' : ''} ${isStepComplete(step.id) && currentStep > step.id ? 'completed' : ''}`}
+                className={`progress-step-v2 ${currentStep === step.id ? 'active' : ''} ${isStepComplete(step.id) && currentStep > step.id ? 'completed' : ''}`}
                 onClick={() => goToStep(step.id)}
                 aria-current={currentStep === step.id ? 'step' : undefined}
                 aria-label={`Step ${step.id}: ${step.label}${isStepComplete(step.id) ? ' (completed)' : ''}`}
               >
-                <div className="step-indicator" aria-hidden="true">
-                  <span className="step-number">{getStepIcon(step.icon)}</span>
+                <div className="step-indicator-v2" aria-hidden="true">
+                  <span className="step-icon">
+                    {isStepComplete(step.id) && currentStep > step.id
+                      ? getIcon('check', 18)
+                      : getStepIcon(step.icon)
+                    }
+                  </span>
                 </div>
-                <span className="step-label">{step.label}</span>
+                <div className="step-info">
+                  <span className="step-label-v2">{step.label}</span>
+                  <span className="step-description">{step.description}</span>
+                </div>
               </button>
             ))}
           </div>
         </div>
 
         {/* API Error */}
+        {/* API Error */}
         {apiError && (
-          <div className="form-error" role="alert" aria-live="assertive">
-            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-              <circle cx="12" cy="12" r="10" />
-              <line x1="12" y1="8" x2="12" y2="12" />
-              <line x1="12" y1="16" x2="12.01" y2="16" />
-            </svg>
-            <p>{apiError}</p>
+          <div className={`form-error-v2 ${apiError.isServerWakingUp ? 'waking-up' : ''}`} role="alert" aria-live="assertive">
+            <div className="error-icon">{getIcon(apiError.isServerWakingUp ? 'refresh' : 'alert', 22)}</div>
+            <div className="error-content">
+              <h4>{apiError.isServerWakingUp ? 'Server Waking Up' : 'Assessment Error'}</h4>
+              <p style={{ whiteSpace: 'pre-line' }}>{apiError.message || apiError}</p>
+            </div>
           </div>
         )}
 
         {/* Step 1: Personal Information */}
         <fieldset
-          className={`form-section ${currentStep !== 1 ? 'hidden' : ''}`}
+          className={`form-section-v2 ${currentStep !== 1 ? 'hidden' : ''} animate-section`}
           aria-hidden={currentStep !== 1}
+          id="step-1"
         >
-          <div className="section-header">
-            <div className="section-icon personal" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" />
-                <circle cx="12" cy="7" r="4" />
-              </svg>
+          <div className="section-header-v2">
+            <div className="section-icon-v2 personal" aria-hidden="true">
+              {getStepIcon('user')}
             </div>
-            <div className="section-title">
+            <div className="section-title-v2">
               <legend>Personal Information</legend>
               <p>Tell us about yourself</p>
             </div>
           </div>
 
-          <div className="form-grid">
-            <div className={`form-group ${errors.age ? 'has-error' : ''}`}>
+          <div className="form-grid-v2">
+            <div className={`form-group-v2 ${errors.age ? 'has-error' : ''}`}>
               <label htmlFor="age">
-                Age <span className="label-required" aria-hidden="true">*</span>
-                <span className="tooltip-trigger" tabIndex="0" role="button" aria-describedby="age-tooltip">?</span>
-                <span id="age-tooltip" className="tooltip-content" role="tooltip">Your age in years (18-100)</span>
+                <span className="label-text">Age</span>
+                <span className="label-required" aria-hidden="true">*</span>
               </label>
-              <div className="input-wrapper">
+              <div className="input-wrapper-v2">
                 <input
                   type="number"
                   id="age"
@@ -336,38 +464,42 @@ const HealthForm = ({ onPrediction, onError, onLoading, loading, onBack, initial
                   })}
                   placeholder="Enter your age"
                 />
-                <span className="input-unit" aria-hidden="true">years</span>
+                <span className="input-unit-v2" aria-hidden="true">years</span>
+                <div className="input-focus-ring"></div>
               </div>
-              {errors.age && <span id="age-error" className="error" role="alert">{errors.age.message}</span>}
+              {errors.age && <span id="age-error" className="error-v2" role="alert">{errors.age.message}</span>}
             </div>
 
-            <div className={`form-group ${errors.gender ? 'has-error' : ''}`}>
+            <div className={`form-group-v2 ${errors.gender ? 'has-error' : ''}`}>
               <label htmlFor="gender">
-                Gender <span className="label-required" aria-hidden="true">*</span>
+                <span className="label-text">Gender</span>
+                <span className="label-required" aria-hidden="true">*</span>
               </label>
-              <select
-                id="gender"
-                aria-required="true"
-                aria-invalid={errors.gender ? 'true' : 'false'}
-                {...register('gender', { required: 'Gender is required' })}
-                defaultValue=""
-              >
-                <option value="" disabled>Select your gender</option>
-                <option value="1">Male</option>
-                <option value="2">Female</option>
-              </select>
-              {errors.gender && <span className="error" role="alert">{errors.gender.message}</span>}
+              <div className="select-wrapper-v2">
+                <select
+                  id="gender"
+                  aria-required="true"
+                  aria-invalid={errors.gender ? 'true' : 'false'}
+                  {...register('gender', { required: 'Gender is required' })}
+                  defaultValue=""
+                >
+                  <option value="" disabled>Select your gender</option>
+                  <option value="1">Male</option>
+                  <option value="2">Female</option>
+                </select>
+                <div className="select-arrow"></div>
+              </div>
+              {errors.gender && <span className="error-v2" role="alert">{errors.gender.message}</span>}
             </div>
 
             {useMetric ? (
               <>
-                <div className={`form-group ${errors.height ? 'has-error' : ''}`}>
+                <div className={`form-group-v2 ${errors.height ? 'has-error' : ''}`}>
                   <label htmlFor="height">
-                    Height <span className="label-required" aria-hidden="true">*</span>
-                    <span className="tooltip-trigger" tabIndex="0" role="button" aria-describedby="height-tooltip">?</span>
-                    <span id="height-tooltip" className="tooltip-content" role="tooltip">Your height in centimeters (120-220)</span>
+                    <span className="label-text">Height</span>
+                    <span className="label-required" aria-hidden="true">*</span>
                   </label>
-                  <div className="input-wrapper">
+                  <div className="input-wrapper-v2">
                     <input
                       type="number"
                       id="height"
@@ -380,16 +512,18 @@ const HealthForm = ({ onPrediction, onError, onLoading, loading, onBack, initial
                       })}
                       placeholder="Enter your height"
                     />
-                    <span className="input-unit" aria-hidden="true">cm</span>
+                    <span className="input-unit-v2" aria-hidden="true">cm</span>
+                    <div className="input-focus-ring"></div>
                   </div>
-                  {errors.height && <span className="error" role="alert">{errors.height.message}</span>}
+                  {errors.height && <span className="error-v2" role="alert">{errors.height.message}</span>}
                 </div>
 
-                <div className={`form-group ${errors.weight ? 'has-error' : ''}`}>
+                <div className={`form-group-v2 ${errors.weight ? 'has-error' : ''}`}>
                   <label htmlFor="weight">
-                    Weight <span className="label-required" aria-hidden="true">*</span>
+                    <span className="label-text">Weight</span>
+                    <span className="label-required" aria-hidden="true">*</span>
                   </label>
-                  <div className="input-wrapper">
+                  <div className="input-wrapper-v2">
                     <input
                       type="number"
                       id="weight"
@@ -402,19 +536,21 @@ const HealthForm = ({ onPrediction, onError, onLoading, loading, onBack, initial
                       })}
                       placeholder="Enter your weight"
                     />
-                    <span className="input-unit" aria-hidden="true">kg</span>
+                    <span className="input-unit-v2" aria-hidden="true">kg</span>
+                    <div className="input-focus-ring"></div>
                   </div>
-                  {errors.weight && <span className="error" role="alert">{errors.weight.message}</span>}
+                  {errors.weight && <span className="error-v2" role="alert">{errors.weight.message}</span>}
                 </div>
               </>
             ) : (
               <>
-                <div className="form-group height-imperial">
+                <div className="form-group-v2 height-imperial">
                   <label>
-                    Height <span className="label-required" aria-hidden="true">*</span>
+                    <span className="label-text">Height</span>
+                    <span className="label-required" aria-hidden="true">*</span>
                   </label>
-                  <div className="input-group-imperial">
-                    <div className="input-wrapper">
+                  <div className="input-group-imperial-v2">
+                    <div className="input-wrapper-v2">
                       <input
                         type="number"
                         id="heightFeet"
@@ -426,9 +562,10 @@ const HealthForm = ({ onPrediction, onError, onLoading, loading, onBack, initial
                         })}
                         placeholder="Feet"
                       />
-                      <span className="input-unit" aria-hidden="true">ft</span>
+                      <span className="input-unit-v2" aria-hidden="true">ft</span>
+                      <div className="input-focus-ring"></div>
                     </div>
-                    <div className="input-wrapper">
+                    <div className="input-wrapper-v2">
                       <input
                         type="number"
                         id="heightInches"
@@ -439,19 +576,21 @@ const HealthForm = ({ onPrediction, onError, onLoading, loading, onBack, initial
                         })}
                         placeholder="Inches"
                       />
-                      <span className="input-unit" aria-hidden="true">in</span>
+                      <span className="input-unit-v2" aria-hidden="true">in</span>
+                      <div className="input-focus-ring"></div>
                     </div>
                   </div>
                   {(errors.heightFeet || errors.heightInches) && (
-                    <span className="error" role="alert">{errors.heightFeet?.message || errors.heightInches?.message}</span>
+                    <span className="error-v2" role="alert">{errors.heightFeet?.message || errors.heightInches?.message}</span>
                   )}
                 </div>
 
-                <div className={`form-group ${errors.weightLbs ? 'has-error' : ''}`}>
+                <div className={`form-group-v2 ${errors.weightLbs ? 'has-error' : ''}`}>
                   <label htmlFor="weightLbs">
-                    Weight <span className="label-required" aria-hidden="true">*</span>
+                    <span className="label-text">Weight</span>
+                    <span className="label-required" aria-hidden="true">*</span>
                   </label>
-                  <div className="input-wrapper">
+                  <div className="input-wrapper-v2">
                     <input
                       type="number"
                       id="weightLbs"
@@ -463,9 +602,10 @@ const HealthForm = ({ onPrediction, onError, onLoading, loading, onBack, initial
                       })}
                       placeholder="Enter your weight"
                     />
-                    <span className="input-unit" aria-hidden="true">lbs</span>
+                    <span className="input-unit-v2" aria-hidden="true">lbs</span>
+                    <div className="input-focus-ring"></div>
                   </div>
-                  {errors.weightLbs && <span className="error" role="alert">{errors.weightLbs.message}</span>}
+                  {errors.weightLbs && <span className="error-v2" role="alert">{errors.weightLbs.message}</span>}
                 </div>
               </>
             )}
@@ -474,29 +614,28 @@ const HealthForm = ({ onPrediction, onError, onLoading, loading, onBack, initial
 
         {/* Step 2: Medical Information */}
         <fieldset
-          className={`form-section ${currentStep !== 2 ? 'hidden' : ''}`}
+          className={`form-section-v2 ${currentStep !== 2 ? 'hidden' : ''} animate-section`}
           aria-hidden={currentStep !== 2}
+          id="step-2"
         >
-          <div className="section-header">
-            <div className="section-icon medical" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" />
-              </svg>
+          <div className="section-header-v2">
+            <div className="section-icon-v2 medical" aria-hidden="true">
+              {getStepIcon('heart')}
             </div>
-            <div className="section-title">
+            <div className="section-title-v2">
               <legend>Medical Information</legend>
               <p>Your health vitals and lab results</p>
             </div>
           </div>
 
-          <div className="form-grid">
-            <div className={`form-group ${errors.ap_hi ? 'has-error' : ''}`}>
+          <div className="form-grid-v2">
+            <div className={`form-group-v2 ${errors.ap_hi ? 'has-error' : ''}`}>
               <label htmlFor="ap_hi">
-                Systolic Blood Pressure <span className="label-required" aria-hidden="true">*</span>
-                <span className="tooltip-trigger" tabIndex="0" role="button" aria-describedby="bp-tooltip">?</span>
-                <span id="bp-tooltip" className="tooltip-content" role="tooltip">The top number in a BP reading (e.g., 120 in 120/80)</span>
+                <span className="label-text">Systolic Blood Pressure</span>
+                <span className="label-required" aria-hidden="true">*</span>
+                <span className="label-hint">(Top number)</span>
               </label>
-              <div className="input-wrapper">
+              <div className="input-wrapper-v2">
                 <input
                   type="number"
                   id="ap_hi"
@@ -509,18 +648,19 @@ const HealthForm = ({ onPrediction, onError, onLoading, loading, onBack, initial
                   })}
                   placeholder="e.g., 120"
                 />
-                <span className="input-unit" aria-hidden="true">mmHg</span>
+                <span className="input-unit-v2" aria-hidden="true">mmHg</span>
+                <div className="input-focus-ring"></div>
               </div>
-              {errors.ap_hi && <span className="error" role="alert">{errors.ap_hi.message}</span>}
+              {errors.ap_hi && <span className="error-v2" role="alert">{errors.ap_hi.message}</span>}
             </div>
 
-            <div className={`form-group ${errors.ap_lo ? 'has-error' : ''}`}>
+            <div className={`form-group-v2 ${errors.ap_lo ? 'has-error' : ''}`}>
               <label htmlFor="ap_lo">
-                Diastolic Blood Pressure <span className="label-required" aria-hidden="true">*</span>
-                <span className="tooltip-trigger" tabIndex="0" role="button" aria-describedby="bp-lo-tooltip">?</span>
-                <span id="bp-lo-tooltip" className="tooltip-content" role="tooltip">The bottom number in a BP reading (e.g., 80 in 120/80)</span>
+                <span className="label-text">Diastolic Blood Pressure</span>
+                <span className="label-required" aria-hidden="true">*</span>
+                <span className="label-hint">(Bottom number)</span>
               </label>
-              <div className="input-wrapper">
+              <div className="input-wrapper-v2">
                 <input
                   type="number"
                   id="ap_lo"
@@ -533,178 +673,189 @@ const HealthForm = ({ onPrediction, onError, onLoading, loading, onBack, initial
                   })}
                   placeholder="e.g., 80"
                 />
-                <span className="input-unit" aria-hidden="true">mmHg</span>
+                <span className="input-unit-v2" aria-hidden="true">mmHg</span>
+                <div className="input-focus-ring"></div>
               </div>
-              {errors.ap_lo && <span className="error" role="alert">{errors.ap_lo.message}</span>}
+              {errors.ap_lo && <span className="error-v2" role="alert">{errors.ap_lo.message}</span>}
             </div>
 
-            <div className={`form-group ${errors.cholesterol ? 'has-error' : ''}`}>
+            <div className={`form-group-v2 ${errors.cholesterol ? 'has-error' : ''}`}>
               <label htmlFor="cholesterol">
-                Cholesterol Level <span className="label-required" aria-hidden="true">*</span>
+                <span className="label-text">Cholesterol Level</span>
+                <span className="label-required" aria-hidden="true">*</span>
               </label>
-              <select
-                id="cholesterol"
-                aria-required="true"
-                aria-invalid={errors.cholesterol ? 'true' : 'false'}
-                {...register('cholesterol', { required: 'Cholesterol level is required' })}
-                defaultValue=""
-              >
-                <option value="" disabled>Select cholesterol level</option>
-                <option value="1">Normal (below 200 mg/dL)</option>
-                <option value="2">Above Normal (200-239 mg/dL)</option>
-                <option value="3">Well Above Normal (240+ mg/dL)</option>
-              </select>
-              {errors.cholesterol && <span className="error" role="alert">{errors.cholesterol.message}</span>}
+              <div className="select-wrapper-v2">
+                <select
+                  id="cholesterol"
+                  aria-required="true"
+                  aria-invalid={errors.cholesterol ? 'true' : 'false'}
+                  {...register('cholesterol', { required: 'Cholesterol level is required' })}
+                  defaultValue=""
+                >
+                  <option value="" disabled>Select cholesterol level</option>
+                  <option value="1">Normal (below 200 mg/dL)</option>
+                  <option value="2">Above Normal (200-239 mg/dL)</option>
+                  <option value="3">Well Above Normal (240+ mg/dL)</option>
+                </select>
+                <div className="select-arrow"></div>
+              </div>
+              {errors.cholesterol && <span className="error-v2" role="alert">{errors.cholesterol.message}</span>}
             </div>
 
-            <div className={`form-group ${errors.gluc ? 'has-error' : ''}`}>
+            <div className={`form-group-v2 ${errors.gluc ? 'has-error' : ''}`}>
               <label htmlFor="gluc">
-                Glucose Level <span className="label-required" aria-hidden="true">*</span>
+                <span className="label-text">Glucose Level</span>
+                <span className="label-required" aria-hidden="true">*</span>
               </label>
-              <select
-                id="gluc"
-                aria-required="true"
-                aria-invalid={errors.gluc ? 'true' : 'false'}
-                {...register('gluc', { required: 'Glucose level is required' })}
-                defaultValue=""
-              >
-                <option value="" disabled>Select glucose level</option>
-                <option value="1">Normal (below 100 mg/dL)</option>
-                <option value="2">Above Normal (100-125 mg/dL)</option>
-                <option value="3">Well Above Normal (126+ mg/dL)</option>
-              </select>
-              {errors.gluc && <span className="error" role="alert">{errors.gluc.message}</span>}
+              <div className="select-wrapper-v2">
+                <select
+                  id="gluc"
+                  aria-required="true"
+                  aria-invalid={errors.gluc ? 'true' : 'false'}
+                  {...register('gluc', { required: 'Glucose level is required' })}
+                  defaultValue=""
+                >
+                  <option value="" disabled>Select glucose level</option>
+                  <option value="1">Normal (below 100 mg/dL)</option>
+                  <option value="2">Above Normal (100-125 mg/dL)</option>
+                  <option value="3">Well Above Normal (126+ mg/dL)</option>
+                </select>
+                <div className="select-arrow"></div>
+              </div>
+              {errors.gluc && <span className="error-v2" role="alert">{errors.gluc.message}</span>}
             </div>
           </div>
 
-          <div className="quick-tips" role="note">
-            <h5>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="16" x2="12" y2="12" />
-                <line x1="12" y1="8" x2="12.01" y2="8" />
-              </svg>
-              Quick Tips
-            </h5>
-            <ul>
-              <li>Normal blood pressure is typically around 120/80 mmHg</li>
-              <li>Ideal cholesterol is below 200 mg/dL total</li>
-            </ul>
+          <div className="info-card-v2" role="note">
+            <div className="info-icon">{getIcon('info', 20)}</div>
+            <div className="info-content">
+              <h5>Reference Values</h5>
+              <ul>
+                <li><strong>Normal BP:</strong> Around 120/80 mmHg</li>
+                <li><strong>Ideal Cholesterol:</strong> Below 200 mg/dL</li>
+              </ul>
+            </div>
           </div>
         </fieldset>
 
         {/* Step 3: Lifestyle Information */}
         <fieldset
-          className={`form-section ${currentStep !== 3 ? 'hidden' : ''}`}
+          className={`form-section-v2 ${currentStep !== 3 ? 'hidden' : ''} animate-section`}
           aria-hidden={currentStep !== 3}
+          id="step-3"
         >
-          <div className="section-header">
-            <div className="section-icon lifestyle" aria-hidden="true">
-              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
-                <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-              </svg>
+          <div className="section-header-v2">
+            <div className="section-icon-v2 lifestyle" aria-hidden="true">
+              {getStepIcon('activity')}
             </div>
-            <div className="section-title">
+            <div className="section-title-v2">
               <legend>Lifestyle Information</legend>
               <p>Your daily habits and activities</p>
             </div>
           </div>
 
-          <div className="form-grid">
-            <div className={`form-group ${errors.smoke ? 'has-error' : ''}`}>
+          <div className="form-grid-v2 lifestyle-grid">
+            <div className={`form-group-v2 lifestyle-card ${errors.smoke ? 'has-error' : ''}`}>
+              <div className="lifestyle-icon smoke">🚬</div>
               <label htmlFor="smoke">
-                Do you smoke? <span className="label-required" aria-hidden="true">*</span>
+                <span className="label-text">Do you smoke?</span>
+                <span className="label-required" aria-hidden="true">*</span>
               </label>
-              <select
-                id="smoke"
-                aria-required="true"
-                aria-invalid={errors.smoke ? 'true' : 'false'}
-                {...register('smoke', { required: 'Smoking status is required' })}
-                defaultValue=""
-              >
-                <option value="" disabled>Select smoking status</option>
-                <option value="0">No, I don't smoke</option>
-                <option value="1">Yes, I smoke</option>
-              </select>
-              {errors.smoke && <span className="error" role="alert">{errors.smoke.message}</span>}
+              <div className="select-wrapper-v2">
+                <select
+                  id="smoke"
+                  aria-required="true"
+                  aria-invalid={errors.smoke ? 'true' : 'false'}
+                  {...register('smoke', { required: 'Smoking status is required' })}
+                  defaultValue=""
+                >
+                  <option value="" disabled>Select status</option>
+                  <option value="0">No, I don't smoke</option>
+                  <option value="1">Yes, I smoke</option>
+                </select>
+                <div className="select-arrow"></div>
+              </div>
+              {errors.smoke && <span className="error-v2" role="alert">{errors.smoke.message}</span>}
             </div>
 
-            <div className={`form-group ${errors.alco ? 'has-error' : ''}`}>
+            <div className={`form-group-v2 lifestyle-card ${errors.alco ? 'has-error' : ''}`}>
+              <div className="lifestyle-icon alcohol">🍷</div>
               <label htmlFor="alco">
-                Do you consume alcohol? <span className="label-required" aria-hidden="true">*</span>
+                <span className="label-text">Do you drink alcohol?</span>
+                <span className="label-required" aria-hidden="true">*</span>
               </label>
-              <select
-                id="alco"
-                aria-required="true"
-                aria-invalid={errors.alco ? 'true' : 'false'}
-                {...register('alco', { required: 'Alcohol consumption status is required' })}
-                defaultValue=""
-              >
-                <option value="" disabled>Select alcohol consumption</option>
-                <option value="0">No, I don't drink</option>
-                <option value="1">Yes, I drink</option>
-              </select>
-              {errors.alco && <span className="error" role="alert">{errors.alco.message}</span>}
+              <div className="select-wrapper-v2">
+                <select
+                  id="alco"
+                  aria-required="true"
+                  aria-invalid={errors.alco ? 'true' : 'false'}
+                  {...register('alco', { required: 'Alcohol consumption status is required' })}
+                  defaultValue=""
+                >
+                  <option value="" disabled>Select status</option>
+                  <option value="0">No, I don't drink</option>
+                  <option value="1">Yes, I drink</option>
+                </select>
+                <div className="select-arrow"></div>
+              </div>
+              {errors.alco && <span className="error-v2" role="alert">{errors.alco.message}</span>}
             </div>
 
-            <div className={`form-group ${errors.active ? 'has-error' : ''}`}>
+            <div className={`form-group-v2 lifestyle-card ${errors.active ? 'has-error' : ''}`}>
+              <div className="lifestyle-icon active">🏃</div>
               <label htmlFor="active">
-                Are you physically active? <span className="label-required" aria-hidden="true">*</span>
-                <span className="tooltip-trigger" tabIndex="0" role="button" aria-describedby="active-tooltip">?</span>
-                <span id="active-tooltip" className="tooltip-content" role="tooltip">Regular exercise or physical activity at least 3x per week</span>
+                <span className="label-text">Are you physically active?</span>
+                <span className="label-required" aria-hidden="true">*</span>
               </label>
-              <select
-                id="active"
-                aria-required="true"
-                aria-invalid={errors.active ? 'true' : 'false'}
-                {...register('active', { required: 'Physical activity status is required' })}
-                defaultValue=""
-              >
-                <option value="" disabled>Select activity level</option>
-                <option value="0">No, I'm not very active</option>
-                <option value="1">Yes, I exercise regularly</option>
-              </select>
-              {errors.active && <span className="error" role="alert">{errors.active.message}</span>}
+              <div className="select-wrapper-v2">
+                <select
+                  id="active"
+                  aria-required="true"
+                  aria-invalid={errors.active ? 'true' : 'false'}
+                  {...register('active', { required: 'Physical activity status is required' })}
+                  defaultValue=""
+                >
+                  <option value="" disabled>Select status</option>
+                  <option value="0">No, not very active</option>
+                  <option value="1">Yes, I exercise regularly</option>
+                </select>
+                <div className="select-arrow"></div>
+              </div>
+              {errors.active && <span className="error-v2" role="alert">{errors.active.message}</span>}
             </div>
           </div>
 
-          <div className="quick-tips" role="note">
-            <h5>
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <circle cx="12" cy="12" r="10" />
-                <line x1="12" y1="16" x2="12" y2="12" />
-                <line x1="12" y1="8" x2="12.01" y2="8" />
-              </svg>
-              Healthy Habits
-            </h5>
-            <ul>
-              <li>Regular physical activity can reduce heart disease risk by up to 35%</li>
-              <li>Quitting smoking significantly improves cardiovascular health within months</li>
-            </ul>
+          <div className="info-card-v2 success" role="note">
+            <div className="info-icon">{getIcon('heartPulse', 20)}</div>
+            <div className="info-content">
+              <h5>Healthy Lifestyle Benefits</h5>
+              <ul>
+                <li>Regular exercise reduces heart disease risk by <strong>up to 35%</strong></li>
+                <li>Quitting smoking improves cardiovascular health within months</li>
+              </ul>
+            </div>
           </div>
         </fieldset>
 
         {/* Form Actions */}
-        <div className="form-actions">
-          <div className="form-actions-left">
+        <div className="form-actions-v2">
+          <div className="actions-left">
             {currentStep > 1 && (
               <button
                 type="button"
                 onClick={handlePrevStep}
-                className="btn btn-secondary btn-nav prev"
+                className="btn-nav-v2 prev"
                 disabled={loading}
                 aria-label="Go to previous step"
               >
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                  <polyline points="15 18 9 12 15 6" />
-                </svg>
-                Previous
+                {getIcon('back', 18)}
+                <span>Previous</span>
               </button>
             )}
             <button
               type="button"
               onClick={handleReset}
-              className="btn btn-secondary"
+              className="btn-reset-v2"
               disabled={loading}
               aria-label="Reset the form"
             >
@@ -716,33 +867,29 @@ const HealthForm = ({ onPrediction, onError, onLoading, loading, onBack, initial
             <button
               type="button"
               onClick={handleNextStep}
-              className="btn btn-primary btn-nav next"
+              className="btn-next-v2"
               aria-label="Go to next step"
             >
-              Continue
-              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                <polyline points="9 18 15 12 9 6" />
-              </svg>
+              <span>Continue</span>
+              {getIcon('forward', 18)}
             </button>
           ) : (
             <button
               type="submit"
-              className={`btn btn-primary btn-submit ${loading ? 'loading' : ''}`}
+              className={`btn-submit-v2 ${loading ? 'loading' : ''}`}
               disabled={loading}
               aria-label={loading ? 'Analyzing your data' : 'Submit form and analyze risk'}
               aria-busy={loading}
             >
-              <span className="btn-text">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true">
-                  <circle cx="11" cy="11" r="8" />
-                  <path d="M21 21l-4.35-4.35" />
-                </svg>
-                Analyze Risk
+              <span className="btn-text-v2">
+                {getIcon('search', 20)}
+                <span>Analyze Risk</span>
               </span>
-              <span className="btn-loading-content" aria-hidden={!loading}>
-                <span className="loading-spinner"></span>
-                Analyzing...
+              <span className="btn-loading-v2" aria-hidden={!loading}>
+                <span className="loading-spinner-v2"></span>
+                <span>Analyzing...</span>
               </span>
+              <span className="btn-shimmer-v2"></span>
             </button>
           )}
         </div>
